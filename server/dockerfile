@@ -1,0 +1,17 @@
+FROM ubuntu:22.04
+
+# Install required packages
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    curl \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the processing script
+COPY process_video.sh /app/process_video.sh
+RUN chmod +x /app/process_video.sh
+
+WORKDIR /app
+
+# Set the entrypoint
+ENTRYPOINT ["/app/process_video.sh"]
