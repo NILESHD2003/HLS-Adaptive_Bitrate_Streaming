@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package videoservice;
+
+service VideoStatusService {
+  rpc EmitVideoStatus (VideoStatusRequest) returns (VideoStatusResponse) {}
+}
+
+message VideoStatusRequest {
+  string video_id = 1;
+  string status = 2;
+  map<string, string> additional_data = 3;
+}
+
+message VideoStatusResponse {
+  bool success = 1;
+  string message = 2;
+}

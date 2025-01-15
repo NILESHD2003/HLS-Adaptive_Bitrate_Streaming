@@ -1,13 +1,13 @@
 {
-  "name": "server",
+  "name": "consumer",
   "version": "1.0.0",
-  "main": "index2.js",
+  "main": "consumer/transcoder.js",
   "scripts": {
     "start:dev": "nodemon index.js",
     "start:prod": "node index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Nilesh Deshpande",
   "license": "ISC",
   "type": "commonjs",
   "description": "",
@@ -17,13 +17,8 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
-    "mongoose": "^8.9.4",
-    "node-cron": "^3.0.3",
-    "node-fetch": "^2.6.7",
+    "mongoose": "^8.9.5",
     "nodemon": "^3.1.9",
-    "oci-queue": "^2.100.1",
-    "oci-sdk": "^2.100.1",
-    "socket.io": "^4.8.1",
-    "uuid": "^11.0.5"
+    "oci-sdk": "^2.100.2"
   }
 }

@@ -51,7 +51,7 @@ exports.uploadSuccessful = async (req, res) => {
 
         const video = await Video.findOneAndUpdate({ slug: slug }, { state: 'Queued for Processing', orgVideoUrl: presignedUrlDownload });
 
-        emitVideoStatus(slug, 'Queued for Processing', {
+        await emitVideoStatus(slug, 'Queued for Processing', {
             title: video.title,
             description: video.description
         });

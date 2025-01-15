@@ -2,9 +2,20 @@ const { exec } = require('child_process');
 const queueClient = require('../config/queueClient.config');
 const Video = require('../models/video.model');
 require('dotenv').config();
-const { emitVideoStatus } = require('../utils/socketManager.utils');
+const { updateVideoStatus } = require('../grpcClient');
+// const { emitVideoStatus } = require('../utils/socketManager.utils');
 
 const queueId = process.env.QUEUE_ID;
+
+const removeContainer = async (containerName) => {
+    const removeCommand = `docker rm -f ${containerName}`;
+    try {
+        await exec(removeCommand);
+        console.log(`Container ${containerName} removed successfully.`);
+    } catch (error) {
+        console.error(`Failed to remove container ${containerName}:`, error.message);
+    }
+};
 
 const isVideoAlreadyProcessed = async (videoId) => {
     try {
@@ -16,7 +27,7 @@ const isVideoAlreadyProcessed = async (videoId) => {
     }
 };
 
-const PROCESSING_TIMEOUT = 10 * 60 * 1000; // 10 mins
+const PROCESSING_TIMEOUT = 20 * 60 * 1000;
 
 const execPromise = (command, timeout = PROCESSING_TIMEOUT) => {
     return new Promise((resolve, reject) => {
@@ -78,21 +89,24 @@ const processMessage = async (message) => {
             },
             { new: true }
         );
-        emitVideoStatus(messageContent.videoID, 'Processing');
-        const dockerCommand = `docker run --cpus="2.0" video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
+        await updateVideoStatus(messageContent.videoID, 'Processing');
+        // const dockerCommand = `docker run --cpus="2.0" video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
+        const containerName = `video-processor-${messageContent.videoID}`;
+        const dockerCommand = `sudo docker run --name ${containerName} video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
+
         // console.log('Starting processing for video:', messageContent.videoID);
 
         try {
             await execPromise(dockerCommand);
             // console.log('Processing completed successfully for video:', messageContent.videoID);
-
+            removeContainer(containerName);
             await Video.findOneAndUpdate(
                 { slug: messageContent.videoID },
                 {
                     state: 'Processing Complete. Publishing.',
                 }
             );
-            emitVideoStatus(messageContent.videoID, 'Processing Complete. Publishing.');
+            await updateVideoStatus(messageContent.videoID, 'Processing Complete. Publishing.');
             await queueClient.deleteMessage({
                 queueId: queueId,
                 messageReceipt: message.receipt
@@ -101,7 +115,7 @@ const processMessage = async (message) => {
 
         } catch (error) {
             console.error('Processing failed for video:', messageContent.videoID, error.message);
-            emitVideoStatus(messageContent.videoID, 'Processing Failed', {
+            await updateVideoStatus(messageContent.videoID, 'Processing Failed', {
                 error: error.message
             });
             await Video.findOneAndUpdate(

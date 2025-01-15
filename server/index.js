@@ -4,8 +4,9 @@ const app = express();
 const server = require('http').createServer(app);
 const {initializeSocket} = require('./utils/socketManager.utils');
 const {connect} = require('./config/database');
-const {transcoder} = require('./consumer/transcoder');
+// const {transcoder} = require('./consumer/transcoder');
 const {schedulePARGeneration} = require('./utils/parGenerator.utils');
+const { startGrpcServer } = require('./grpcVideoService');
 
 app.use(express.json());
 connect();
@@ -19,7 +20,8 @@ app.get('/', (req, res) => {
 });
 
 schedulePARGeneration();
-transcoder();
+// transcoder();
+startGrpcServer();
 
 const uploadRoute = require('./routes/upload.route');
 const webhookRoute = require('./routes/webhook.route');
