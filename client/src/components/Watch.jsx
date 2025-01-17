@@ -26,7 +26,7 @@ function Watch() {
             }
 
             try {
-                const response = await fetch(`http://${baseUrl}/watch?videoId=${videoId}`);
+                const response = await fetch(`https://${baseUrl}/watch?videoId=${videoId}`);
                 const data = await response.json();
 
                 if (!response.ok) {
