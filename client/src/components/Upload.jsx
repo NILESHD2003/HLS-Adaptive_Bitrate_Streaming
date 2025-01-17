@@ -34,7 +34,7 @@ const useSocketConnection = (videoId, onStatusUpdate) => {
     useEffect(() => {
         if (!videoId) return;
 
-        const socket = io(import.meta.env.VITE_SERVER_URL || 'https://lioness-live-jawfish.ngrok-free.app', {
+        const socket = io(`https://${baseUrl}`, {
             transports: ['websocket'],
             reconnection: true,
             reconnectionAttempts: 5
@@ -216,7 +216,7 @@ function Upload() {
         updateUploadState({ isProcessing: true, processingStatus: 'Initiating upload...' });
 
         try {
-            const response = await fetch(`http://${baseUrl}/upload/upload-url`, {
+            const response = await fetch(`https://${baseUrl}/upload/upload-url`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, description }),
