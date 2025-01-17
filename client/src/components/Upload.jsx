@@ -185,6 +185,12 @@ function Upload() {
 
     const handleFileSelect = useCallback((event) => {
         const selectedFile = event.target.files?.[0];
+        const MAX_FILE_SIZE = 50 * 1024 * 1024;
+        if (selectedFile.size > MAX_FILE_SIZE) {
+            alert('File size exceeds 50MB limit');
+            event.target.value = '';
+            return;
+        }
         if (selectedFile && selectedFile.type.startsWith('video/')) {
             updateUploadState({
                 file: selectedFile,
@@ -305,10 +311,10 @@ function Upload() {
                                 <div className="text-center">
                                     <UploadIcon className="mx-auto h-12 w-12 text-gray-400" />
                                     <p className="mt-2 text-sm text-gray-600">
-                                        Click to upload or drag and drop
+                                        Click to upload
                                     </p>
                                     <p className="text-xs text-gray-500">
-                                        MP4, WebM, or Ogg (Max 100MB)
+                                        MP4, WebM, or Ogg (Max 50MB)
                                     </p>
                                 </div>
                             )}
