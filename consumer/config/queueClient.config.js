@@ -10,4 +10,4 @@ const queueClient = new oci.queue.QueueClient({
 });
 queueClient.endpoint = queueEndpoint;
 
-module.exports = queueClient;
+module.exports = queueClient;   

@@ -1,10 +1,11 @@
 const Video = require("../models/video.model");
 const { generatePresignedUrl_Upload, generatePresignedUrl_Download } = require("../utils/generatePresignedUrls.utils");
-const queueClient = require('../config/queueClient.config');
+// const queueClient = require('../config/queueClient.config');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config();
 const { emitVideoStatus } = require('../utils/socketManager.utils');
+const redisClient = require('../config/redisClient.config');
 
 const bucketName = process.env.BUCKET_NAME;
 const namespaceName = process.env.NAMESPACE_NAME;
@@ -38,6 +39,8 @@ exports.uploadUrl = async (req, res) => {
 exports.uploadSuccessful = async (req, res) => {
     try {
         const { data } = req.body;
+
+        console.log('Received data as Bucket Upload Webhook Notification:', data);
 
         const { presignedUrlDownload } = await generatePresignedUrl_Download(
             bucketName,
@@ -77,18 +80,30 @@ exports.uploadSuccessful = async (req, res) => {
 
         const queueId = process.env.QUEUE_ID;
 
-        const resp = await queueClient.putMessages({
-            queueId: queueId,
-            putMessagesDetails: {
-                messages: [{
-                    content: JSON.stringify({
-                        videoID: slug,
-                        originalUrl: presignedUrlDownload,
-                        uploadUrl: uploadUrl
-                    })
-                }]
-            }
-        });
+        // const resp = await queueClient.putMessages({
+        //     queueId: queueId,
+        //     putMessagesDetails: {
+        //         messages: [{
+        //             content: JSON.stringify({
+        //                 videoID: slug,
+        //                 originalUrl: presignedUrlDownload,
+        //                 uploadUrl: uploadUrl
+        //             })
+        //         }]
+        //     }
+        // });
+
+        // Add to Redis queue
+        try {
+            await redisClient.rpush('hls:videoProcessingQueue', JSON.stringify({
+                videoID: slug,
+                originalUrl: presignedUrlDownload,
+                uploadUrl: uploadUrl
+            }));
+            console.log('Added to Redis queue successfully');
+        } catch (error) {
+            console.error('Error adding to Redis queue:', error);
+        }
 
         // console.log('Queue Response:', resp);
 

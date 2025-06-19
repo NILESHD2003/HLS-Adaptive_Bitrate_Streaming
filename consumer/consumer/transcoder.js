@@ -1,9 +1,10 @@
 const { exec } = require('child_process');
-const queueClient = require('../config/queueClient.config');
+// const queueClient = require('../config/queueClient.config');
 const Video = require('../models/video.model');
 require('dotenv').config();
 const { updateVideoStatus } = require('../grpcClient');
 // const { emitVideoStatus } = require('../utils/socketManager.utils');
+const redisClient = require('../config/redisClient.config');
 
 const queueId = process.env.QUEUE_ID;
 
@@ -68,15 +69,15 @@ const processMessage = async (message) => {
     let messageContent;
 
     try {
-        messageContent = JSON.parse(message.content);
+        messageContent = JSON.parse(message);
         // console.log('Processing message content:', messageContent);
 
         if (await isVideoAlreadyProcessed(messageContent.videoID)) {
             console.log(`Video ${messageContent.videoID} was already successfully processed. Skipping.`);
-            await queueClient.deleteMessage({
-                queueId: queueId,
-                messageReceipt: message.receipt
-            });
+            // await queueClient.deleteMessage({
+            //     queueId: queueId,
+            //     messageReceipt: message.receipt
+            // });
             return;
         }
 
@@ -92,7 +93,9 @@ const processMessage = async (message) => {
         await updateVideoStatus(messageContent.videoID, 'Processing');
         // const dockerCommand = `docker run --cpus="2.0" video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
         const containerName = `video-processor-${messageContent.videoID}`;
-        const dockerCommand = `sudo docker run --name ${containerName} video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
+        const dockerCommand = `sudo docker run --platform linux/arm64 --name ${containerName} video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
+
+        // const dockerCommand = `docker run --name ${containerName} video-processor "${messageContent.originalUrl}" "${messageContent.uploadUrl}" "${messageContent.videoID}"`;
 
         // console.log('Starting processing for video:', messageContent.videoID);
 
@@ -107,10 +110,10 @@ const processMessage = async (message) => {
                 }
             );
             await updateVideoStatus(messageContent.videoID, 'Processing Complete. Publishing.');
-            await queueClient.deleteMessage({
-                queueId: queueId,
-                messageReceipt: message.receipt
-            });
+            // await queueClient.deleteMessage({
+            //     queueId: queueId,
+            //     messageReceipt: message.receipt
+            // });
             // console.log(`Deleted message with receipt: ${message.receipt}`);
 
         } catch (error) {
@@ -136,29 +139,38 @@ const processMessage = async (message) => {
 };
 
 const transcoder = async () => {
-    console.log("Starting queue consumer...");
+    console.log("Starting Redis queue consumer...");
     let isRunning = true;
 
     process.on('SIGINT', () => {
-        console.log('Shutting down queue consumer...');
+        console.log('Shutting down Redis queue consumer...');
         isRunning = false;
     });
 
     while (isRunning) {
         try {
-            const receiveMessageDetails = {
-                queueId: queueId,
-                timeoutInSeconds: 30,
-                maxNumberOfMessages: 1
-            };
+            // const receiveMessageDetails = {
+            //     queueId: queueId,
+            //     timeoutInSeconds: 30,
+            //     maxNumberOfMessages: 1
+            // };
 
-            const response = await queueClient.getMessages(receiveMessageDetails);
-            const messages = response.getMessages.messages;
+            // const response = await queueClient.getMessages(receiveMessageDetails);
+            // const messages = response.getMessages.messages;
 
-            if (messages && messages.length > 0) {
-                // console.log('Found message, processing...');
-                await processMessage(messages[0]);
+            // if (messages && messages.length > 0) {
+            //     // console.log('Found message, processing...');
+            //     await processMessage(messages[0]);
+            // } else {
+            //     await new Promise(resolve => setTimeout(resolve, 5000));
+            // }
+
+            const message = await redisClient.lpop('hls:videoProcessingQueue');
+
+            if (message) {
+                await processMessage(message);
             } else {
+                // console.log('No messages in the queue, waiting...');
                 await new Promise(resolve => setTimeout(resolve, 5000));
             }
         } catch (error) {
@@ -166,7 +178,6 @@ const transcoder = async () => {
             await new Promise(resolve => setTimeout(resolve, 5000));
         }
     }
-
     console.log("Queue consumer stopped.");
 };
 
